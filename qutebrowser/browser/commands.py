@@ -239,8 +239,10 @@ class CommandDispatcher:
     @cmdutils.register(instance='command-dispatcher', scope='window')
     @cmdutils.argument('count', value=cmdutils.Value.count)
     def tab_close(self, prev=False, next_=False, opposite=False,
-                  force=False, count=None):
+                  force=False, count=None, pattern=None):
         """Close the current/[count]th tab.
+
+        If a pattern is given, close all tabs whose URL contains the pattern.
 
         Args:
             prev: Force selecting the tab before the current tab.
@@ -249,7 +251,40 @@ class CommandDispatcher:
                       what's configured in 'tabs.select_on_remove'.
             force: Avoid confirmation for pinned tabs.
             count: The tab index to close, or None
+            pattern: A substring to match against tab URLs. All matching
+                     tabs will be closed.
         """
+        if pattern is not None:
+            first_tab = True
+            matched = False
+            cur_tab = self._tabbed_browser.widget.currentWidget()
+            for tab in self._tabbed_browser.widgets():
+                url_str = tab.url().toDisplayString()
+                if pattern in url_str:
+                    matched = True
+                    if tab is cur_tab:
+                        # Close current tab last to avoid index shifts
+                        continue
+                    close = functools.partial(
+                        self._tab_close, tab, prev, next_, opposite)
+                    if tab.data.pinned and not force:
+                        self._tabbed_browser.tab_close_prompt_if_pinned(
+                            tab, force, close)
+                    else:
+                        self._tabbed_browser.close_tab(
+                            tab, new_undo=first_tab)
+                        first_tab = False
+            # Close current tab if it matched
+            if cur_tab is not None and pattern in cur_tab.url().toDisplayString():
+                close = functools.partial(
+                    self._tab_close, cur_tab, prev, next_, opposite)
+                self._tabbed_browser.tab_close_prompt_if_pinned(
+                    cur_tab, force, close)
+            if not matched:
+                raise cmdutils.CommandError(
+                    "No tabs matching '{}'".format(pattern))
+            return
+
         tab = self._cntwidget(count)
         if tab is None:
             return
