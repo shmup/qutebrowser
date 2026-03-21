@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=qutebrowser
+GenericName=Web Browser
+Comment=vim-like web browser
+# needs qutebrowser in $PATH
+Exec=qutebrowser %u
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=x-scheme-handler/http;x-scheme-handler/https;text/html;application/xhtml+xml;
