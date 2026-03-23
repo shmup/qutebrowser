@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# ///
+"""launch qutebrowser in a disposable bubblewrap sandbox.
+
+everything outside the sandbox is read-only or invisible.
+browser state lives in a tmpdir that's destroyed on exit.
+
+usage: ./scripts/ephemeral [url]
+"""
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+
+SRC_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+VENV_PYTHON = os.path.join(SRC_DIR, ".venv", "bin", "python")
+# venv python is usually a symlink to uv's managed install
+REAL_PYTHON = os.path.realpath(VENV_PYTHON)
+
+
+def build_bwrap_args(fake_home: str, url: str | None = None) -> list[str]:
+    args = ["bwrap"]
+
+    # filesystem: read-only system libs
+    for path in ["/usr", "/lib", "/lib64", "/bin", "/sbin", "/etc"]:
+        if os.path.exists(path):
+            args += ["--ro-bind", path, path]
+
+    # fake home directory (writable, ephemeral)
+    args += ["--bind", fake_home, os.environ["HOME"]]
+
+    # source checkout (read-only, overlays fake home)
+    args += ["--ro-bind", SRC_DIR, SRC_DIR]
+
+    # uv-managed python (venv symlinks here, overlays fake home)
+    real_python_prefix = os.path.dirname(os.path.dirname(REAL_PYTHON))
+    if real_python_prefix != SRC_DIR and os.path.exists(real_python_prefix):
+        args += ["--ro-bind", real_python_prefix, real_python_prefix]
+
+    # dns: resolv.conf is often a symlink into /run/systemd/resolve/
+    resolv_target = os.path.realpath("/etc/resolv.conf")
+    resolv_dir = os.path.dirname(resolv_target)
+    if resolv_dir.startswith("/run/") and os.path.exists(resolv_dir):
+        args += ["--ro-bind", resolv_dir, resolv_dir]
+
+    # system dbus socket
+    if os.path.exists("/run/dbus"):
+        args += ["--ro-bind", "/run/dbus", "/run/dbus"]
+
+    # proc, dev, sys, tmp
+    args += ["--proc", "/proc"]
+    args += ["--dev", "/dev"]
+    args += ["--ro-bind", "/sys", "/sys"]
+    args += ["--tmpfs", "/tmp"]
+
+    # gpu access
+    if os.path.exists("/dev/dri"):
+        args += ["--dev-bind", "/dev/dri", "/dev/dri"]
+
+    # x11
+    display = os.environ.get("DISPLAY", ":0")
+    x11_socket = f"/tmp/.X11-unix/X{display.split(':')[1].split('.')[0]}"
+    if os.path.exists(x11_socket):
+        args += ["--ro-bind", x11_socket, x11_socket]
+
+    # xauthority - copy it into fake home so it's accessible
+    xauth = os.environ.get("XAUTHORITY", os.path.expanduser("~/.Xauthority"))
+    if os.path.exists(xauth):
+        sandbox_xauth = os.path.join(fake_home, ".Xauthority")
+        shutil.copy2(xauth, sandbox_xauth)
+        args += ["--setenv", "XAUTHORITY",
+                 os.path.join(os.environ["HOME"], ".Xauthority")]
+
+    # dbus (needed for some qt functionality)
+    dbus_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS", "")
+    if dbus_addr.startswith("unix:path="):
+        dbus_path = dbus_addr.split("=", 1)[1].split(",")[0]
+        if os.path.exists(dbus_path):
+            args += ["--ro-bind", dbus_path, dbus_path]
+
+    # xdg runtime dir (for dbus, wayland sockets)
+    xdg_runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if xdg_runtime and os.path.exists(xdg_runtime):
+        args += ["--ro-bind", xdg_runtime, xdg_runtime]
+
+    # environment
+    args += ["--setenv", "DISPLAY", display]
+    args += ["--setenv", "HOME", os.environ["HOME"]]
+    args += ["--setenv", "TERM", os.environ.get("TERM", "xterm-256color")]
+    if xdg_runtime:
+        args += ["--setenv", "XDG_RUNTIME_DIR", xdg_runtime]
+    if dbus_addr:
+        args += ["--setenv", "DBUS_SESSION_BUS_ADDRESS", dbus_addr]
+
+    # unshare everything except network (phase 1)
+    args += ["--unshare-user-try"]
+    args += ["--unshare-ipc"]
+    args += ["--unshare-uts"]
+    args += ["--unshare-cgroup-try"]
+
+    # die when parent dies
+    args += ["--die-with-parent"]
+
+    # the actual command
+    args += ["--"]
+    args += [VENV_PYTHON, "-m", "qutebrowser", "--temp-basedir"]
+
+    if url:
+        args += [url]
+
+    return args
+
+
+def main():
+    parser = argparse.ArgumentParser(description="ephemeral qutebrowser sandbox")
+    parser.add_argument("url", nargs="?", help="url to open")
+    parsed = parser.parse_args()
+
+    if not os.path.exists(VENV_PYTHON):
+        print(f"error: venv not found at {VENV_PYTHON}", file=sys.stderr)
+        print("run 'just setup' first", file=sys.stderr)
+        sys.exit(1)
+
+    if not shutil.which("bwrap"):
+        print("error: bubblewrap (bwrap) not found", file=sys.stderr)
+        print("install it: sudo dnf install bubblewrap", file=sys.stderr)
+        sys.exit(1)
+
+    fake_home = tempfile.mkdtemp(prefix="qb-ephemeral-")
+    try:
+        args = build_bwrap_args(fake_home, parsed.url)
+        result = subprocess.run(args)
+        sys.exit(result.returncode)
+    finally:
+        shutil.rmtree(fake_home, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    main()
