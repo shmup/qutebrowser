@@ -7,15 +7,18 @@
 everything outside the sandbox is read-only or invisible.
 browser state lives in a tmpdir that's destroyed on exit.
 
-usage: ./scripts/ephemeral [url]
+usage: ./scripts/ephemeral [--isolate-net] [url]
 """
 
 import argparse
+import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 
 SRC_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -24,7 +27,12 @@ VENV_PYTHON = os.path.join(SRC_DIR, ".venv", "bin", "python")
 REAL_PYTHON = os.path.realpath(VENV_PYTHON)
 
 
-def build_bwrap_args(fake_home: str, url: str | None = None) -> list[str]:
+def build_bwrap_args(
+    fake_home: str,
+    url: str | None = None,
+    isolate_net: bool = False,
+    info_fd: int | None = None,
+) -> list[str]:
     args = ["bwrap"]
 
     # filesystem: read-only system libs
@@ -98,11 +106,18 @@ def build_bwrap_args(fake_home: str, url: str | None = None) -> list[str]:
     if dbus_addr:
         args += ["--setenv", "DBUS_SESSION_BUS_ADDRESS", dbus_addr]
 
-    # unshare everything except network (phase 1)
+    # namespace isolation
     args += ["--unshare-user-try"]
     args += ["--unshare-ipc"]
     args += ["--unshare-uts"]
     args += ["--unshare-cgroup-try"]
+
+    if isolate_net:
+        args += ["--unshare-net"]
+
+    # report child pid so we can attach slirp4netns
+    if info_fd is not None:
+        args += ["--info-fd", str(info_fd)]
 
     # die when parent dies
     args += ["--die-with-parent"]
@@ -117,9 +132,53 @@ def build_bwrap_args(fake_home: str, url: str | None = None) -> list[str]:
     return args
 
 
+def run_with_net_isolation(fake_home: str, url: str | None = None) -> int:
+    """launch sandbox with --unshare-net, then attach slirp4netns for internet."""
+    # bwrap's --info-fd writes json with child-pid to a pipe
+    info_r, info_w = os.pipe()
+
+    args = build_bwrap_args(fake_home, url, isolate_net=True, info_fd=info_w)
+
+    bwrap_proc = subprocess.Popen(args, pass_fds=(info_w,))
+    os.close(info_w)
+
+    # read the child pid from bwrap's info fd
+    with os.fdopen(info_r, "r") as f:
+        info = json.load(f)
+    child_pid = info["child-pid"]
+
+    # attach slirp4netns to give the sandbox internet via NAT
+    slirp_proc = subprocess.Popen([
+        "slirp4netns",
+        "--configure",
+        "--disable-host-loopback",
+        str(child_pid),
+        "tap0",
+    ])
+
+    try:
+        bwrap_proc.wait()
+    finally:
+        slirp_proc.terminate()
+        slirp_proc.wait()
+
+    return bwrap_proc.returncode
+
+
+def run_without_net_isolation(fake_home: str, url: str | None = None) -> int:
+    """launch sandbox with shared network (phase 1 mode)."""
+    args = build_bwrap_args(fake_home, url, isolate_net=False)
+    result = subprocess.run(args)
+    return result.returncode
+
+
 def main():
     parser = argparse.ArgumentParser(description="ephemeral qutebrowser sandbox")
     parser.add_argument("url", nargs="?", help="url to open")
+    parser.add_argument(
+        "--isolate-net", action="store_true",
+        help="isolate network via slirp4netns (browser can't see LAN)",
+    )
     parsed = parser.parse_args()
 
     if not os.path.exists(VENV_PYTHON):
@@ -132,11 +191,18 @@ def main():
         print("install it: sudo dnf install bubblewrap", file=sys.stderr)
         sys.exit(1)
 
+    if parsed.isolate_net and not shutil.which("slirp4netns"):
+        print("error: slirp4netns not found (needed for --isolate-net)", file=sys.stderr)
+        print("install it: sudo dnf install slirp4netns", file=sys.stderr)
+        sys.exit(1)
+
     fake_home = tempfile.mkdtemp(prefix="qb-ephemeral-")
     try:
-        args = build_bwrap_args(fake_home, parsed.url)
-        result = subprocess.run(args)
-        sys.exit(result.returncode)
+        if parsed.isolate_net:
+            rc = run_with_net_isolation(fake_home, parsed.url)
+        else:
+            rc = run_without_net_isolation(fake_home, parsed.url)
+        sys.exit(rc)
     finally:
         shutil.rmtree(fake_home, ignore_errors=True)
 
