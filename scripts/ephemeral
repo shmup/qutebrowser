@@ -14,11 +14,9 @@ import argparse
 import json
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
-import time
 
 
 SRC_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -82,8 +80,7 @@ def build_bwrap_args(
     if os.path.exists(xauth):
         sandbox_xauth = os.path.join(fake_home, ".Xauthority")
         shutil.copy2(xauth, sandbox_xauth)
-        args += ["--setenv", "XAUTHORITY",
-                 os.path.join(os.environ["HOME"], ".Xauthority")]
+        args += ["--setenv", "XAUTHORITY", os.path.join(os.environ["HOME"], ".Xauthority")]
 
     # dbus (needed for some qt functionality)
     dbus_addr = os.environ.get("DBUS_SESSION_BUS_ADDRESS", "")
@@ -108,6 +105,7 @@ def build_bwrap_args(
 
     # namespace isolation
     args += ["--unshare-user-try"]
+    args += ["--unshare-pid"]
     args += ["--unshare-ipc"]
     args += ["--unshare-uts"]
     args += ["--unshare-cgroup-try"]
@@ -148,13 +146,15 @@ def run_with_net_isolation(fake_home: str, url: str | None = None) -> int:
     child_pid = info["child-pid"]
 
     # attach slirp4netns to give the sandbox internet via NAT
-    slirp_proc = subprocess.Popen([
-        "slirp4netns",
-        "--configure",
-        "--disable-host-loopback",
-        str(child_pid),
-        "tap0",
-    ])
+    slirp_proc = subprocess.Popen(
+        [
+            "slirp4netns",
+            "--configure",
+            "--disable-host-loopback",
+            str(child_pid),
+            "tap0",
+        ]
+    )
 
     try:
         bwrap_proc.wait()
@@ -176,7 +176,8 @@ def main():
     parser = argparse.ArgumentParser(description="ephemeral qutebrowser sandbox")
     parser.add_argument("url", nargs="?", help="url to open")
     parser.add_argument(
-        "--isolate-net", action="store_true",
+        "--isolate-net",
+        action="store_true",
         help="isolate network via slirp4netns (browser can't see LAN)",
     )
     parsed = parser.parse_args()
