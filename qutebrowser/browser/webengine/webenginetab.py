@@ -640,6 +640,12 @@ class WebEngineHistoryPrivate(browsertab.AbstractHistoryPrivate):
 
         Just load the current URL, see
         https://github.com/qutebrowser/qutebrowser/issues/5359
+
+        For lazy restore: if the active entry is qute://back, store the
+        real URL on tab.data and skip loading. The tab will be loaded
+        when it gains focus (handled by TabbedBrowser._on_current_changed).
+        The qute://back placeholder only appears when session.lazy_restore
+        is enabled (inserted by SessionManager._load_tab).
         """
         if not items:
             return
@@ -651,7 +657,9 @@ class WebEngineHistoryPrivate(browsertab.AbstractHistoryPrivate):
 
         url = items[cur_idx].url
         if (url.scheme(), url.host()) == ('qute', 'back') and cur_idx >= 1:
-            url = items[cur_idx - 1].url
+            self._tab.data.lazy_url = items[cur_idx - 1].url
+            self._tab.data.lazy_title = items[cur_idx - 1].title
+            return
 
         self._tab.load_url(url)
 
