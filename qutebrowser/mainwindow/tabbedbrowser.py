@@ -890,6 +890,17 @@ class TabbedBrowser(QWidget):
         assert isinstance(widget, browsertab.AbstractTab), widget
         widget.data.input_mode = usertypes.KeyMode.normal
 
+    def _load_lazy_tab(self, tab):
+        """Load a tab's deferred URL if it was lazily restored.
+
+        Called when a tab gains focus. If the tab has a lazy_url stored
+        from session restore, load it now and clear the deferred state.
+        """
+        if tab.data.lazy_url is not None:
+            tab.load_url(tab.data.lazy_url)
+            tab.data.lazy_url = None
+            tab.data.lazy_title = None
+
     @pyqtSlot(int)
     def _on_current_changed(self, idx):
         """Add prev tab to stack and leave hinting mode when focus changed."""
@@ -925,6 +936,7 @@ class TabbedBrowser(QWidget):
         log.modes.debug("Mode after tab change: {} (mode_on_change = {})"
                         .format(current_mode.name, mode_on_change))
         self._now_focused = tab
+        self._load_lazy_tab(tab)
         self.current_tab_changed.emit(tab)
         self.cur_search_match_changed.emit(tab.search.match)
         QTimer.singleShot(0, self._update_window_title)
