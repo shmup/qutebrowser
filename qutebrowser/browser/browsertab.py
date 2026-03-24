@@ -119,6 +119,9 @@ class TabData:
         netrc_used: Whether netrc authentication was performed.
         input_mode: current input mode for the tab.
         splitter: InspectorSplitter used to show inspector inside the tab.
+        lazy_url: Deferred URL for lazy session restore. Set when a tab is
+                  restored but not yet loaded. Cleared on first focus.
+        lazy_title: Title to preserve in session saves for lazy tabs.
     """
 
     keep_icon: bool = False
@@ -132,6 +135,8 @@ class TabData:
     input_mode: usertypes.KeyMode = usertypes.KeyMode.normal
     last_navigation: Optional[usertypes.NavigationRequest] = None
     splitter: Optional[miscwidgets.InspectorSplitter] = None
+    lazy_url: Optional['QUrl'] = None
+    lazy_title: Optional[str] = None
 
     def should_show_icon(self) -> bool:
         return (config.val.tabs.favicons.show == 'always' or
