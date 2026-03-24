@@ -235,6 +235,7 @@ class TabbedBrowser(QWidget):
         self._update_stack_size()
         self._filter = signalfilter.SignalFilter(win_id, self)
         self._now_focused = None
+        self._restoring_session = False
         self.search_text = None
         self.search_options: Mapping[str, Any] = {}
         self._local_marks: MutableMapping[QUrl, MutableMapping[str, QPoint]] = {}
@@ -896,6 +897,8 @@ class TabbedBrowser(QWidget):
         Called when a tab gains focus. If the tab has a lazy_url stored
         from session restore, load it now and clear the deferred state.
         """
+        if self._restoring_session:
+            return
         if tab.data.lazy_url is not None:
             tab.load_url(tab.data.lazy_url)
             tab.data.lazy_url = None
