@@ -235,6 +235,21 @@ class SessionManager(QObject):
         if active:
             data['active'] = True
 
+        # Handle lazy (never-loaded) tabs — they have no history in Qt
+        # but we need to preserve their URL for the next session load.
+        # This intentionally bypasses with_history since lazy tabs have
+        # no Qt history to include or exclude.
+        if tab.data.lazy_url is not None:
+            data['history'].append({
+                'url': bytes(
+                    tab.data.lazy_url.toEncoded()
+                ).decode('ascii'),
+                'title': tab.data.lazy_title or '',
+                'active': True,
+                'pinned': tab.data.pinned,
+            })
+            return data
+
         history = tab.history if with_history else [tab.history.current_item()]
 
         for idx, item in enumerate(history):

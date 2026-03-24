@@ -5,6 +5,12 @@ from unittest.mock import MagicMock
 from qutebrowser.qt.core import QUrl
 from qutebrowser.browser.browsertab import TabData
 from qutebrowser.misc.sessions import TabHistoryItem
+from qutebrowser.misc import sessions
+
+
+@pytest.fixture
+def sess_man(tmp_path):
+    return sessions.SessionManager(base_path=str(tmp_path))
 
 
 @pytest.fixture
@@ -167,3 +173,36 @@ class TestLastTabLazyLoad:
         tab.load_url.reset_mock()
         TabbedBrowser._load_lazy_tab(browser, tab)
         tab.load_url.assert_not_called()
+
+
+class TestSaveLazyTab:
+    """Test that never-loaded tabs are saved correctly to session files."""
+
+    def test_lazy_tab_saved_with_real_url(self, sess_man):
+        """A tab with lazy_url should save the deferred URL as its history."""
+        tab = MagicMock()
+        tab.data = TabData()
+        tab.data.lazy_url = QUrl('https://www.youtube.com/watch?v=abc')
+        tab.data.lazy_title = 'YouTube Video'
+        tab.data.pinned = False
+
+        data = sess_man._save_tab(tab, active=False)
+
+        assert len(data['history']) == 1
+        assert data['history'][0]['url'] == 'https://www.youtube.com/watch?v=abc'
+        assert data['history'][0]['title'] == 'YouTube Video'
+        assert data['history'][0]['active'] is True
+
+    def test_normal_tab_saved_normally(self, sess_man):
+        """A tab without lazy_url should use the normal save path."""
+        tab = MagicMock()
+        tab.data = TabData()
+        tab.data.pinned = False
+        # Normal tab — lazy_url is None, has real history
+        tab.history.__iter__ = MagicMock(return_value=iter([]))
+        tab.history.current_item.return_value = MagicMock()
+
+        data = sess_man._save_tab(tab, active=False)
+
+        # Should have gone through normal path (empty history = empty list)
+        assert data['history'] == []
