@@ -83,9 +83,11 @@ class TestLazyLoadOnFocus:
         tab.data.lazy_url = QUrl('https://www.youtube.com/watch?v=abc')
         tab.data.lazy_title = 'YouTube Video'
 
-        # Simulate the lazy load trigger
+        browser = MagicMock(spec=['_restoring_session'])
+        browser._restoring_session = False
+
         from qutebrowser.mainwindow.tabbedbrowser import TabbedBrowser
-        TabbedBrowser._load_lazy_tab(None, tab)
+        TabbedBrowser._load_lazy_tab(browser, tab)
 
         tab.load_url.assert_called_once_with(QUrl('https://www.youtube.com/watch?v=abc'))
         assert tab.data.lazy_url is None
@@ -96,7 +98,72 @@ class TestLazyLoadOnFocus:
         tab = MagicMock()
         tab.data = TabData()
 
-        from qutebrowser.mainwindow.tabbedbrowser import TabbedBrowser
-        TabbedBrowser._load_lazy_tab(None, tab)
+        browser = MagicMock(spec=['_restoring_session'])
+        browser._restoring_session = False
 
+        from qutebrowser.mainwindow.tabbedbrowser import TabbedBrowser
+        TabbedBrowser._load_lazy_tab(browser, tab)
+
+        tab.load_url.assert_not_called()
+
+
+class TestSessionRestoreSuppression:
+    """Test that lazy loading is suppressed during session restore."""
+
+    def test_lazy_load_suppressed_during_restore(self):
+        """_load_lazy_tab should not load when _restoring_session is True."""
+        tab = MagicMock()
+        tab.data = TabData()
+        tab.data.lazy_url = QUrl('https://www.youtube.com/watch?v=abc')
+
+        browser = MagicMock(spec=['_restoring_session'])
+        browser._restoring_session = True
+
+        from qutebrowser.mainwindow.tabbedbrowser import TabbedBrowser
+        TabbedBrowser._load_lazy_tab(browser, tab)
+
+        tab.load_url.assert_not_called()
+        # lazy_url should still be set — not consumed
+        assert tab.data.lazy_url is not None
+
+    def test_lazy_load_allowed_after_restore(self):
+        """_load_lazy_tab should work normally when _restoring_session is False."""
+        tab = MagicMock()
+        tab.data = TabData()
+        tab.data.lazy_url = QUrl('https://example.com')
+        tab.data.lazy_title = 'Example'
+
+        browser = MagicMock(spec=['_restoring_session'])
+        browser._restoring_session = False
+
+        from qutebrowser.mainwindow.tabbedbrowser import TabbedBrowser
+        TabbedBrowser._load_lazy_tab(browser, tab)
+
+        tab.load_url.assert_called_once()
+        assert tab.data.lazy_url is None
+
+
+class TestLastTabLazyLoad:
+    """Test that the last tab loads even when setCurrentIndex is a no-op."""
+
+    def test_lazy_load_called_explicitly_after_set_current_index(self):
+        """When tab_to_focus is already current, _load_lazy_tab should still fire."""
+        tab = MagicMock()
+        tab.data = TabData()
+        tab.data.lazy_url = QUrl('https://example.com')
+        tab.data.lazy_title = 'Example'
+
+        browser = MagicMock(spec=['_restoring_session'])
+        browser._restoring_session = False
+
+        from qutebrowser.mainwindow.tabbedbrowser import TabbedBrowser
+        # first call — simulates what _on_current_changed would do
+        TabbedBrowser._load_lazy_tab(browser, tab)
+        assert tab.data.lazy_url is None
+        tab.load_url.assert_called_once()
+
+        # second call — simulates the explicit safety-net call
+        # should be a no-op since lazy_url is already None
+        tab.load_url.reset_mock()
+        TabbedBrowser._load_lazy_tab(browser, tab)
         tab.load_url.assert_not_called()

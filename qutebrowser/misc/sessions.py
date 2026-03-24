@@ -462,6 +462,7 @@ class SessionManager(QObject):
                                        private=win.get('private', None))
         tabbed_browser = objreg.get('tabbed-browser', scope='window',
                                     window=window.win_id)
+        tabbed_browser._restoring_session = True
         tab_to_focus = None
         for i, tab in enumerate(win['tabs']):
             new_tab = tabbed_browser.tabopen(background=False)
@@ -470,8 +471,16 @@ class SessionManager(QObject):
                 tab_to_focus = i
             if new_tab.data.pinned:
                 new_tab.set_pinned(True)
+        tabbed_browser._restoring_session = False
         if tab_to_focus is not None:
             tabbed_browser.widget.setCurrentIndex(tab_to_focus)
+            # setCurrentIndex is a no-op if the index is already current
+            # (happens when tab_to_focus is the last tab created), so
+            # _on_current_changed won't fire. Explicitly trigger the lazy
+            # load — it's idempotent if the signal already fired.
+            tab = tabbed_browser.widget.widget(tab_to_focus)
+            if tab is not None:
+                tabbed_browser._load_lazy_tab(tab)
 
         window.show()
         if win.get('active', False):
