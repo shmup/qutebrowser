@@ -73,6 +73,7 @@ c.content.blocking.method = "both"
 # disable canvas fingerprinting by default
 # toggle per-site with :set -u <pattern> content.canvas_reading true
 c.content.canvas_reading = False
+config.bind("yoc", "config-cycle -p content.canvas_reading true false")
 ....
 
 license
