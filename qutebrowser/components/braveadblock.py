@@ -263,7 +263,7 @@ class BraveAdBlocker:
             and config.val.content.blocking.enabled
             and self.enabled
         ):
-            message.info("Run :adblock-update to get adblock lists.")
+            self.update_files()
 
     def adblock_update(self) -> blockutils.BlocklistDownloads:
         """Update the adblock block lists."""
