@@ -28,6 +28,16 @@ tox -e pylint
 tox -e mypy-pyqt6
 ```
 
+## user config
+
+when user mentions "my config", "aliases", "bindings", "quickmarks", or anything in `~/.config/qutebrowser/`, he means his personal runtime config — not source code in this repo.
+
+- `~/.config/qutebrowser/config.py` — main config (aliases, bindings, settings)
+- `~/.config/qutebrowser/autoconfig.yml` — auto-saved settings from `:set`
+- `~/.config/qutebrowser/quickmarks` — quickmark entries
+- `~/.config/qutebrowser/bookmarks/` — bookmarks
+- `~/.config/qutebrowser/greasemonkey/` — userscripts (greasemonkey)
+
 ## project notes
 
 - python 3.9+, targets 3.10-3.14
