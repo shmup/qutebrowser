@@ -30,9 +30,9 @@ tox -e mypy-pyqt6
 
 ## user config
 
-when user mentions "my config", "aliases", "bindings", "quickmarks", or anything in `~/.config/qutebrowser/`, he means his personal runtime config — not source code in this repo.
+`config.example.py` in this repo IS the live config — it's symlinked to `~/.config/qutebrowser/config.py`. edit it here, `:config-source` (or `<space>rv`) to reload.
 
-- `~/.config/qutebrowser/config.py` — main config (aliases, bindings, settings)
+- `config.example.py` — main config (aliases, bindings, settings), symlinked in place
 - `~/.config/qutebrowser/autoconfig.yml` — auto-saved settings from `:set`
 - `~/.config/qutebrowser/quickmarks` — quickmark entries
 - `~/.config/qutebrowser/bookmarks/` — bookmarks
