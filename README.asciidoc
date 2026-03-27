@@ -48,6 +48,9 @@ c.session.lazy_restore = True
 # aliases
 c.aliases["tc"] = "tab-close"
 
+# enter insert mode when a page loads with a focused input
+c.input.insert_mode.auto_load = True
+
 # spoof chrome UA on google login so they stop blocking us
 config.set(
     "content.headers.user_agent",
@@ -74,6 +77,12 @@ c.content.blocking.method = "both"
 # toggle per-site with :set -u <pattern> content.canvas_reading true
 c.content.canvas_reading = False
 config.bind("yoc", "config-cycle -p content.canvas_reading true false")
+
+# --- leader bindings (<space>) ---
+
+config.bind(" tm", "cmd-set-text -s :tab-move")
+config.bind(" tO", "tab-only")
+config.bind(" wO", "window-only")
 ....
 
 license
