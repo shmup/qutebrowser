@@ -352,7 +352,6 @@ class TabWidget(QTabWidget):
         if (icon.isNull() and
                 config.cache['tabs.favicons.show'] != 'never' and
                 config.cache['tabs.pinned.shrink'] and
-                not self.tab_bar().vertical and
                 tab is not None and tab.data.pinned):
             style = self.style()
             assert style is not None
@@ -665,28 +664,47 @@ class TabBar(QTabBar):
     def _pinned_row_geometry(self):
         """Compute side-by-side pinned tab layout.
 
-        Returns (cell_size, cols, rows, pinned_count) or None.
+        Returns (cell_width, cell_height, cols, rows, pinned_count) or None.
         """
         if not self.vertical or not config.cache['tabs.pinned.shrink']:
             return None
         pinned = self._pinned_count()
         if pinned == 0:
             return None
-        cell_size = self._minimum_tab_height()
+        cell_height = self._minimum_tab_height()
+        padding = config.cache['tabs.padding']
+        padding_h = padding.left + padding.right
+
+        # width of widest index text among pinned tabs
+        max_text_width = 0
+        for i in range(pinned):
+            text = self.tabText(i)
+            tw = self.fontMetrics().horizontalAdvance(text)
+            max_text_width = max(max_text_width, tw)
+
+        icon_width = 0
+        if config.cache['tabs.favicons.show'] != 'never':
+            icon_width = self.iconSize().width()
+        icon_padding = TabBarStyle.ICON_PADDING if icon_width > 0 else 0
+
+        cell_width = padding_h + max_text_width + icon_padding + icon_width
+        cell_width = max(cell_width, cell_height)
+
         bar_width = self._tab_bar_width()
-        cols = max(1, bar_width // cell_size)
+        cols = max(1, bar_width // cell_width)
         rows = (pinned + cols - 1) // cols
-        return cell_size, cols, rows, pinned
+        return cell_width, cell_height, cols, rows, pinned
 
     def _pinned_tab_rect(self, index):
         """Compute visual rect for a pinned tab in side-by-side layout."""
         geom = self._pinned_row_geometry()
         if geom is None:
             return self.tabRect(index)
-        cell_size, cols, _rows, _pinned = geom
+        cell_width, cell_height, cols, _rows, _pinned = geom
         row = index // cols
         col = index % cols
-        return QRect(col * cell_size, row * cell_size, cell_size, cell_size)
+        return QRect(col * cell_width, row * cell_height,
+                     cell_width, cell_height)
 
     def tabSizeHint(self, index: int) -> QSize:
         """Override tabSizeHint to customize qb's tab size.
@@ -710,8 +728,8 @@ class TabBar(QTabBar):
             width = self._tab_bar_width()
             geom = self._pinned_row_geometry()
             if geom and self._tab_pinned(index):
-                cell_size, _cols, rows, pinned = geom
-                row_height = rows * cell_size
+                _cell_width, cell_height, _cols, rows, pinned = geom
+                row_height = rows * cell_height
                 # distribute row height across pinned tabs so Qt
                 # allocates exactly the right total vertical space
                 per_tab = row_height // pinned
@@ -760,6 +778,38 @@ class TabBar(QTabBar):
             Qt.TextFlag.TextShowMnemonic,
         )
 
+    def _draw_pinned_label(self, p, tab):
+        """Draw a pinned tab label with index text before the favicon."""
+        padding = config.cache['tabs.padding']
+        rect = QRect(tab.rect)
+        rect.adjust(padding.left, padding.top, -padding.right, -padding.bottom)
+
+        fg_color = tab.palette.color(QPalette.ColorRole.WindowText)
+        p.setPen(fg_color)
+
+        text = tab.text
+        if text:
+            text_width = self.fontMetrics().horizontalAdvance(text)
+            text_rect = QRect(rect.left(), rect.top(),
+                              text_width, rect.height())
+            p.drawText(text_rect,
+                       int(Qt.AlignmentFlag.AlignLeft |
+                           Qt.AlignmentFlag.AlignVCenter),
+                       text)
+            rect.adjust(text_width + TabBarStyle.ICON_PADDING, 0, 0, 0)
+
+        if not tab.icon.isNull():
+            icon_size = tab.iconSize
+            if not icon_size.isValid():
+                icon_extent = self.style().pixelMetric(
+                    QStyle.PixelMetric.PM_SmallIconSize)
+                icon_size = QSize(icon_extent, icon_extent)
+            icon_top = rect.center().y() + 1 - icon_size.height() // 2
+            icon_rect = QRect(rect.left(), icon_top,
+                              icon_size.width(), icon_size.height())
+            icon = tab.icon.pixmap(icon_size)
+            p.drawPixmap(icon_rect, icon)
+
     def paintEvent(self, event):
         """Override paintEvent to draw the tabs like we want to."""
         p = QStylePainter(self)
@@ -797,7 +847,15 @@ class TabBar(QTabBar):
 
             indicator_color = self.tab_indicator_color(idx)
             tab.palette.setColor(QPalette.ColorRole.Base, indicator_color)
-            p.drawControl(QStyle.ControlElement.CE_TabBarTab, tab)
+
+            if is_pinned and config.cache['tabs.pinned.shrink']:
+                # draw shape (background) normally, then label with
+                # index text before the favicon
+                p.drawControl(
+                    QStyle.ControlElement.CE_TabBarTabShape, tab)
+                self._draw_pinned_label(p, tab)
+            else:
+                p.drawControl(QStyle.ControlElement.CE_TabBarTab, tab)
 
     def tabInserted(self, idx):
         """Update visibility when a tab was inserted."""
@@ -841,8 +899,8 @@ class TabBar(QTabBar):
         geom = self._pinned_row_geometry()
         if geom:
             pos = event.position().toPoint()
-            cell_size, _cols, rows, pinned = geom
-            row_height = rows * cell_size
+            _cell_width, cell_height, _cols, rows, pinned = geom
+            row_height = rows * cell_height
             if pos.y() < row_height:
                 for i in range(pinned):
                     if self._pinned_tab_rect(i).contains(pos):
