@@ -574,6 +574,8 @@ class MainWindow(QWidget):
         refresh_window = self.isVisible()
         if hidden:
             modifiers = Qt.WindowType.CustomizeWindowHint | Qt.WindowType.NoDropShadowWindowHint
+            if utils.is_mac:
+                modifiers |= Qt.WindowType.WindowFullscreenButtonHint
             window_flags |= modifiers
         self.setWindowFlags(window_flags)
 
