@@ -37,7 +37,7 @@ for i in range(1, 10):
     config.bind(f" {i}", f"tab-focus {i}")
     c.aliases[str(i)] = f"tab-focus {i}"
 
-config.bind(" rv", "config-source")
+config.bind(" rv", "quickmarks-reload ;; bookmarks-reload ;; config-source")
 config.bind(" tm", "cmd-set-text -s :tab-move")
 config.bind(" tO", "tab-only")
 config.bind(" wO", "window-only")
