@@ -46,7 +46,11 @@ setup:
     Write-Host ""
     Write-Host "setup complete. run with: just run"
 
-[unix]
+[macos]
+run *args:
+    QUTE_DISABLE_PAKJOY=1 .venv/bin/python -m qutebrowser {{args}}
+
+[linux]
 run *args:
     .venv/bin/python -m qutebrowser {{args}}
 
