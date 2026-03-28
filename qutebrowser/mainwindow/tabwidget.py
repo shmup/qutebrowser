@@ -642,6 +642,52 @@ class TabBar(QTabBar):
             return False
         return widget.data.pinned
 
+    def _pinned_count(self):
+        """Return number of contiguous pinned tabs at the start."""
+        for i in range(self.count()):
+            try:
+                if not self._tab_pinned(i):
+                    return i
+            except IndexError:
+                return i
+        return self.count()
+
+    def _tab_bar_width(self):
+        """Return the configured tab bar width in pixels."""
+        confwidth = str(config.cache['tabs.width'])
+        if confwidth.endswith('%'):
+            main_window = objreg.get('main-window', scope='window',
+                                     window=self._win_id)
+            perc = int(confwidth.rstrip('%'))
+            return main_window.width() * perc // 100
+        return int(confwidth)
+
+    def _pinned_row_geometry(self):
+        """Compute side-by-side pinned tab layout.
+
+        Returns (cell_size, cols, rows, pinned_count) or None.
+        """
+        if not self.vertical or not config.cache['tabs.pinned.shrink']:
+            return None
+        pinned = self._pinned_count()
+        if pinned == 0:
+            return None
+        cell_size = self._minimum_tab_height()
+        bar_width = self._tab_bar_width()
+        cols = max(1, bar_width // cell_size)
+        rows = (pinned + cols - 1) // cols
+        return cell_size, cols, rows, pinned
+
+    def _pinned_tab_rect(self, index):
+        """Compute visual rect for a pinned tab in side-by-side layout."""
+        geom = self._pinned_row_geometry()
+        if geom is None:
+            return self.tabRect(index)
+        cell_size, cols, _rows, _pinned = geom
+        row = index // cols
+        col = index % cols
+        return QRect(col * cell_size, row * cell_size, cell_size, cell_size)
+
     def tabSizeHint(self, index: int) -> QSize:
         """Override tabSizeHint to customize qb's tab size.
 
@@ -661,15 +707,19 @@ class TabBar(QTabBar):
 
         height = self._minimum_tab_height()
         if self.vertical:
-            confwidth = str(config.cache['tabs.width'])
-            if confwidth.endswith('%'):
-                main_window = objreg.get('main-window', scope='window',
-                                         window=self._win_id)
-                perc = int(confwidth.rstrip('%'))
-                width = main_window.width() * perc // 100
+            width = self._tab_bar_width()
+            geom = self._pinned_row_geometry()
+            if geom and self._tab_pinned(index):
+                cell_size, _cols, rows, pinned = geom
+                row_height = rows * cell_size
+                # distribute row height across pinned tabs so Qt
+                # allocates exactly the right total vertical space
+                per_tab = row_height // pinned
+                if index == pinned - 1:
+                    per_tab = row_height - per_tab * (pinned - 1)
+                size = QSize(width, per_tab)
             else:
-                width = int(confwidth)
-            size = QSize(width, height)
+                size = QSize(width, height)
         else:
             if config.cache['tabs.pinned.shrink'] and self._tab_pinned(index):
                 # Give pinned tabs the minimum size they need to display their
@@ -715,15 +765,26 @@ class TabBar(QTabBar):
         p = QStylePainter(self)
         selected = self.currentIndex()
         for idx in range(self.count()):
-            if not event.region().intersects(self.tabRect(idx)):
-                # Don't repaint if we are outside the requested region
+            # use visual rect for pinned tabs in vertical side-by-side mode
+            geom = self._pinned_row_geometry()
+            is_pinned = self._tab_pinned(idx)
+            if geom and is_pinned:
+                vis_rect = self._pinned_tab_rect(idx)
+            else:
+                vis_rect = self.tabRect(idx)
+
+            if not event.region().intersects(vis_rect):
                 continue
 
             tab = QStyleOptionTab()
             self.initStyleOption(tab, idx)
 
+            # override rect for side-by-side pinned tabs
+            if geom and is_pinned:
+                tab.rect = vis_rect
+
             setting = 'colors.tabs'
-            if self._tab_pinned(idx):
+            if is_pinned:
                 setting += '.pinned'
             if idx == selected:
                 setting += '.selected'
@@ -774,6 +835,20 @@ class TabBar(QTabBar):
             tabbed_browser = objreg.get('tabbed-browser', scope='window',
                                         window=self._win_id)
             tabbed_browser.wheelEvent(e)
+
+    def mousePressEvent(self, event):
+        """Override to handle clicks on side-by-side pinned tabs."""
+        geom = self._pinned_row_geometry()
+        if geom:
+            pos = event.position().toPoint()
+            cell_size, _cols, rows, pinned = geom
+            row_height = rows * cell_size
+            if pos.y() < row_height:
+                for i in range(pinned):
+                    if self._pinned_tab_rect(i).contains(pos):
+                        self.setCurrentIndex(i)
+                        return
+        super().mousePressEvent(event)
 
 
 @dataclasses.dataclass
