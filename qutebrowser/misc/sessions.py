@@ -500,6 +500,7 @@ class SessionManager(QObject):
         window.show()
         if win.get('active', False):
             QTimer.singleShot(0, tabbed_browser.widget.activateWindow)
+        tabbed_browser.restore_tab_favicons()
 
     def load(self, name, temp=False):
         """Load a named session.

@@ -852,6 +852,11 @@ class TabbedBrowser(QWidget):
             return
         self.widget.update_tab_favicon(tab)
 
+        icon = tab.icon()
+        if not icon.isNull():
+            from qutebrowser.misc import faviconcache
+            faviconcache.save(tab.url(), icon)
+
     @pyqtSlot(usertypes.KeyMode)
     def on_mode_entered(self, mode):
         """Save input mode when tabs.mode_on_change = restore."""
@@ -903,6 +908,29 @@ class TabbedBrowser(QWidget):
             tab.load_url(tab.data.lazy_url)
             tab.data.lazy_url = None
             tab.data.lazy_title = None
+
+    def restore_tab_favicons(self):
+        """Restore cached favicons from disk for all tabs.
+
+        Called after session restore so pinned/lazy tabs show their
+        favicons immediately without waiting for the page to load.
+        """
+        from qutebrowser.misc import faviconcache
+
+        for idx in range(self.widget.count()):
+            tab = self.widget.widget(idx)
+            if not isinstance(tab, browsertab.AbstractTab):
+                continue
+            if not tab.data.should_show_icon():
+                continue
+
+            url = tab.data.lazy_url or tab.url()
+            if not url.isValid() or url.scheme() in ('qute', 'about'):
+                continue
+
+            icon = faviconcache.load(url)
+            if icon is not None:
+                self.widget.setTabIcon(idx, icon)
 
     @pyqtSlot(int)
     def _on_current_changed(self, idx):
