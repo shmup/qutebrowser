@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+cd /Users/jtm/projects/qutebrowser
+exec /opt/homebrew/bin/just run "$@"

@@ -65,3 +65,16 @@ test *args:
 [windows]
 test *args:
     .venv\Scripts\python.exe -m pytest tests\unit {{args}}
+
+# install macos .app bundle to ~/Applications
+[macos]
+install-app:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dest="$HOME/Applications/qutebrowser-dev.app"
+    rsync -a --delete misc/macos/qutebrowser-dev.app/ "$dest/"
+    cp qutebrowser/icons/qutebrowser.icns "$dest/Contents/Resources/"
+    chmod +x "$dest/Contents/MacOS/launch"
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$dest"
+    echo "installed $dest and registered with launch services"
+    echo "qutebrowser-dev should now appear in Desktop & Dock > Default web browser"
