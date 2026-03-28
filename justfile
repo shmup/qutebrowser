@@ -1,17 +1,32 @@
 default:
     @just --list
 
-# cross-platform setup using uv inline scripts
+# cross-platform setup
 
-[unix]
+[linux]
 setup:
     #!/usr/bin/env bash
     set -euo pipefail
-    uv venv
-    # pyqt6 is hosted on riverbank's private pypi, not the main one
-    uv pip install -r misc/requirements/requirements-pyqt-6.txt \
-        --extra-index-url https://www.riverbankcomputing.com/pypi/simple/ \
-        --index-strategy unsafe-best-match
+    # system-site-packages picks up system PyQt6/QtWebEngine (has proprietary codecs)
+    # use system python so venv matches the python version system packages are built for
+    uv venv --system-site-packages --python /bin/python3
+    uv pip install -e .
+    uv pip install adblock
+    echo ""
+    echo "setup complete. run with: just run"
+    echo "requires system packages: python3-pyqt6 python3-pyqt6-webengine"
+
+[macos]
+setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # system-site-packages picks up homebrew PyQt6/QtWebEngine (has proprietary codecs)
+    if ! brew list pyqt@6 &>/dev/null || ! brew list qt@6 &>/dev/null; then
+        echo "missing homebrew packages. install with:"
+        echo "  brew install pyqt@6 qt@6"
+        exit 1
+    fi
+    uv venv --system-site-packages --python python3
     uv pip install -e .
     uv pip install adblock
     echo ""
@@ -21,8 +36,8 @@ setup:
 setup:
     #!powershell
     $ErrorActionPreference = "Stop"
-    uv venv
-    # pyqt6 is hosted on riverbank's private pypi, not the main one
+    # pyqt6 from pip on windows includes codecs, so install from riverbank
+    uv venv --python python3
     uv pip install -r misc/requirements/requirements-pyqt-6.txt `
         --extra-index-url https://www.riverbankcomputing.com/pypi/simple/ `
         --index-strategy unsafe-best-match
