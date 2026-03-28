@@ -26,7 +26,7 @@ setup:
         echo "  brew install pyqt@6 qt@6"
         exit 1
     fi
-    uv venv --system-site-packages --python python3
+    uv venv --system-site-packages --python /opt/homebrew/bin/python3
     uv pip install -e .
     uv pip install adblock
     echo ""
