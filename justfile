@@ -53,3 +53,11 @@ run *args:
 [windows]
 run *args:
     .venv\Scripts\python.exe -m qutebrowser {{args}}
+
+[unix]
+test *args:
+    .venv/bin/python -m pytest tests/unit {{args}}
+
+[windows]
+test *args:
+    .venv\Scripts\python.exe -m pytest tests\unit {{args}}
