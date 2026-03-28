@@ -17,6 +17,7 @@ from collections.abc import Mapping, MutableMapping, MutableSequence
 
 from qutebrowser.qt.widgets import QSizePolicy, QWidget, QApplication
 from qutebrowser.qt.core import pyqtSignal, pyqtSlot, QTimer, QUrl, QPoint
+from qutebrowser.qt.gui import QIcon
 
 from qutebrowser.config import config
 from qutebrowser.keyinput import modeman
@@ -931,6 +932,9 @@ class TabbedBrowser(QWidget):
             icon = faviconcache.load(url)
             if icon is not None:
                 self.widget.setTabIcon(idx, icon)
+            elif tab.data.pinned:
+                # trigger fallback icon for pinned tabs without cached favicons
+                self.widget.setTabIcon(idx, QIcon())
 
     @pyqtSlot(int)
     def _on_current_changed(self, idx):
