@@ -7,6 +7,7 @@ c.auto_save.session = True
 c.colors.webpage.preferred_color_scheme = "dark"
 c.session.lazy_restore = True
 c.aliases["tc"] = "tab-close"
+c.screenshot.copy_to_clipboard = True
 
 # enter insert mode when a page loads with a focused input
 c.input.insert_mode.auto_load = False

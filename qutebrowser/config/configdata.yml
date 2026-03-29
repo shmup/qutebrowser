@@ -459,6 +459,16 @@ auto_save.session:
     By default, this will save to the session which was last loaded. This
     behavior can be customized via the `session.default_name` setting.
 
+screenshot.copy_to_clipboard:
+  type: Bool
+  default: false
+  desc: >-
+    Copy screenshots to the clipboard instead of saving to a file.
+
+    When enabled, the `:screenshot` command copies the screenshot to the
+    clipboard and shows a message with the dimensions. The filename argument
+    becomes optional.
+
 ## content
 
 content.autoplay:

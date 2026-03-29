@@ -20,7 +20,9 @@ except ImportError:
     hunter = None
 
 from qutebrowser.qt.core import Qt
+from qutebrowser.qt.gui import QClipboard
 from qutebrowser.qt.printsupport import QPrintPreviewDialog
+from qutebrowser.qt.widgets import QApplication
 
 from qutebrowser.api import cmdutils, apitypes, message, config
 
@@ -150,7 +152,7 @@ def debug_dump_page(tab: apitypes.Tab, dest: str, plain: bool = False) -> None:
 @cmdutils.argument('tab', value=cmdutils.Value.cur_tab)
 def screenshot(
         tab: apitypes.Tab,
-        filename: pathlib.Path,
+        filename: pathlib.Path = None,
         *,
         rect: str = None,
         force: bool = False,
@@ -158,16 +160,19 @@ def screenshot(
     """Take a screenshot of the currently shown part of the page.
 
     The file format is automatically determined based on the given file extension.
+    If `screenshot.copy_to_clipboard` is set, the screenshot is copied to the
+    clipboard and the filename argument is optional.
 
     Args:
         filename: The file to save the screenshot to (~ gets expanded).
         rect: The rectangle to save, as a string like WxH+X+Y.
         force: Overwrite existing files.
     """
-    expanded = filename.expanduser()
-    if expanded.exists() and not force:
+    copy_to_clipboard = config.val.screenshot.copy_to_clipboard
+
+    if filename is None and not copy_to_clipboard:
         raise cmdutils.CommandError(
-            f"File {filename} already exists (use --force to overwrite)")
+            "filename is required (or set screenshot.copy_to_clipboard)")
 
     try:
         qrect = None if rect is None else utils.parse_rect(rect)
@@ -178,11 +183,21 @@ def screenshot(
     if pic is None:
         raise cmdutils.CommandError("Getting screenshot failed")
 
-    ok = pic.save(str(expanded))
-    if not ok:
-        raise cmdutils.CommandError(f"Saving to {filename} failed")
-
-    _LOGGER.debug(f"Screenshot saved to {filename}")
+    if copy_to_clipboard:
+        clipboard = QApplication.clipboard()
+        assert clipboard is not None
+        clipboard.setPixmap(pic, QClipboard.Mode.Clipboard)
+        w, h = pic.width(), pic.height()
+        message.info(f"{w}x{h} screenshot copied to clipboard")
+    else:
+        expanded = filename.expanduser()
+        if expanded.exists() and not force:
+            raise cmdutils.CommandError(
+                f"File {filename} already exists (use --force to overwrite)")
+        ok = pic.save(str(expanded))
+        if not ok:
+            raise cmdutils.CommandError(f"Saving to {filename} failed")
+        _LOGGER.debug(f"Screenshot saved to {filename}")
 
 
 @cmdutils.register(maxsplit=0)
