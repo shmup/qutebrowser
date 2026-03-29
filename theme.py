@@ -4,14 +4,14 @@
 # --- palette ---
 # swap these to try a different look
 
-bg_deep = "#0a0040"       # deepest background (tab bar, empty space)
-bg_dim = "#2e2b00"        # dim row background
-bg_mid = "#332f00"        # mid row background (alternating)
-bg_active = "#4a4500"     # active/selected background
-bg_bright = "#665e00"     # bright selection background
-fg_dim = "#a07800"        # dim/inactive text
-fg_active = "#e8a800"     # active/selected text
-fg_match = "#ffcc00"      # highlighted match text
+bg_deep = "#000000"       # deepest background (tab bar, empty space)
+bg_dim = "#0d0d0d"        # dim row background
+bg_mid = "#141414"        # mid row background (alternating)
+bg_active = "#2a0a1a"     # active/selected background
+bg_bright = "#3d1028"     # bright selection background
+fg_dim = "#b05080"        # dim/inactive text
+fg_active = "#ff69b4"     # active/selected text
+fg_match = "#ff96cb"      # highlighted match text
 
 font_size = "14pt"
 font_family = "monospace"
