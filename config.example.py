@@ -4,6 +4,7 @@
 config.load_autoconfig()
 
 c.auto_save.session = True
+c.colors.webpage.preferred_color_scheme = "dark"
 c.session.lazy_restore = True
 c.aliases["tc"] = "tab-close"
 
@@ -33,7 +34,7 @@ c.content.canvas_reading = False
 config.set('content.canvas_reading', True, 'https://challenges.cloudflare.com/*')
 config.bind("yoc", "config-cycle -p content.canvas_reading true false")
 config.bind("yot", "config-cycle -p tabs.position left top")
-config.bind("yob", "jseval -q (function(){var s=document.getElementById('qb-dark');if(s){s.remove();return}s=document.createElement('style');s.id='qb-dark';s.textContent='html,body,*:not(img):not(video):not(canvas):not(svg):not(picture):not(figure){background-color:#000!important;color:#aaa!important;border-color:#333!important;box-shadow:none!important}h1,h2,h3,h4,h5,h6{color:#ccc!important}a{color:#6a9fb5!important}a:visited{color:#8a7fb5!important}img,video,canvas,svg,picture{opacity:0.9}input,textarea,select,button{background-color:#111!important;color:#aaa!important;border-color:#333!important}code,pre{background-color:#111!important;color:#aaa!important}';document.head.appendChild(s)})()")
+config.bind("yob", "config-cycle -p colors.webpage.darkmode.enabled true false")
 
 c.window.hide_decoration = True # hide the macOS title bar
 
