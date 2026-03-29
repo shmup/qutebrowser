@@ -31,6 +31,7 @@ c.content.blocking.method = "both"
 # toggle per-site with :set -u <pattern> content.canvas_reading true
 c.content.canvas_reading = False
 config.bind("yoc", "config-cycle -p content.canvas_reading true false")
+config.bind("yot", "config-cycle -p tabs.position left top")
 
 # <space>1-9 and :1-9 to jump to tab by number
 for i in range(1, 10):
