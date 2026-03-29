@@ -7,6 +7,7 @@ c.auto_save.session = True
 c.colors.webpage.preferred_color_scheme = "dark"
 c.session.lazy_restore = True
 c.aliases["tc"] = "tab-close"
+c.aliases["mpv"] = "spawn --userscript view_in_mpv"
 c.screenshot.copy_to_clipboard = True
 
 # enter insert mode when a page loads with a focused input

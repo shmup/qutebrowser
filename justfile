@@ -60,6 +60,8 @@ link-config:
     mkdir -p ~/.config/qutebrowser
     ln -sfn "$(pwd)/config.example.py" ~/.config/qutebrowser/config.py
     ln -sfn "$(pwd)/theme.py" ~/.config/qutebrowser/theme.py
+    mkdir -p ~/.local/share/qutebrowser/userscripts
+    ln -sfn "$(pwd)/misc/userscripts/view_in_mpv" ~/.local/share/qutebrowser/userscripts/view_in_mpv
 
 [macos]
 run *args:
