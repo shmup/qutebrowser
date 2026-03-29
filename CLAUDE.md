@@ -38,6 +38,12 @@ tox -e mypy-pyqt6
 - `~/.config/qutebrowser/bookmarks/` — bookmarks
 - `~/.config/qutebrowser/greasemonkey/` — userscripts (greasemonkey)
 
+## config conventions
+
+we track upstream qutebrowser and want to stay mergeable. most of our changes live in `config.example.py` (bindings, settings, colors) which upstream doesn't touch, so conflicts are rare. if we do make source changes (visual tweaks, extensions, etc.), keep them minimal and expect to resolve conflicts on upstream merges.
+
+browse available settings with `:set` in the browser or at `qute://settings`.
+
 ## project notes
 
 - python 3.9+, targets 3.10-3.14
