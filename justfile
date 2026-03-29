@@ -12,6 +12,7 @@ setup:
     uv venv --system-site-packages --python /bin/python3
     uv pip install -e .
     uv pip install adblock
+    just setup-pdfjs
     just link-config
     echo ""
     echo "setup complete. run with: just run"
@@ -30,6 +31,7 @@ setup:
     uv venv --system-site-packages --python /opt/homebrew/bin/python3
     uv pip install -e .
     uv pip install adblock
+    just setup-pdfjs
     just link-config
     echo ""
     echo "setup complete. run with: just run"
@@ -47,6 +49,10 @@ setup:
     uv pip install adblock
     Write-Host ""
     Write-Host "setup complete. run with: just run"
+
+# download pdf.js for in-browser pdf viewing
+setup-pdfjs:
+    .venv/bin/python scripts/dev/update_3rdparty.py
 
 # symlink config and theme into XDG config dir
 [unix]
