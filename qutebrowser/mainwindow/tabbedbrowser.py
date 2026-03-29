@@ -729,8 +729,25 @@ class TabbedBrowser(QWidget):
 
     def _update_favicons(self):
         """Update favicons when config was changed."""
+        from qutebrowser.misc import faviconcache
+
         for tab in self.widgets():
-            self.widget.update_tab_favicon(tab)
+            idx = self.widget.indexOf(tab)
+            if not tab.data.should_show_icon():
+                self.widget.setTabIcon(idx, QIcon())
+                continue
+
+            # prefer the live icon from the webengine view
+            icon = tab.icon()
+            if icon.isNull():
+                # fall back to the on-disk favicon cache (e.g. session-restored
+                # pinned tabs that haven't loaded yet)
+                url = tab.data.lazy_url or tab.url()
+                cached = faviconcache.load(url)
+                if cached is not None:
+                    icon = cached
+
+            self.widget.setTabIcon(idx, icon)
 
     @pyqtSlot()
     def _on_load_started(self, tab):
