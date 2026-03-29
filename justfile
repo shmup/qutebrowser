@@ -12,6 +12,7 @@ setup:
     uv venv --system-site-packages --python /bin/python3
     uv pip install -e .
     uv pip install adblock
+    just link-config
     echo ""
     echo "setup complete. run with: just run"
     echo "requires system packages: python3-pyqt6 python3-pyqt6-webengine"
@@ -29,6 +30,7 @@ setup:
     uv venv --system-site-packages --python /opt/homebrew/bin/python3
     uv pip install -e .
     uv pip install adblock
+    just link-config
     echo ""
     echo "setup complete. run with: just run"
 
@@ -45,6 +47,13 @@ setup:
     uv pip install adblock
     Write-Host ""
     Write-Host "setup complete. run with: just run"
+
+# symlink config and theme into XDG config dir
+[unix]
+link-config:
+    mkdir -p ~/.config/qutebrowser
+    ln -sfn "$(pwd)/config.example.py" ~/.config/qutebrowser/config.py
+    ln -sfn "$(pwd)/theme.py" ~/.config/qutebrowser/theme.py
 
 [macos]
 run *args:
