@@ -11,7 +11,7 @@ c.aliases["tc"] = "tab-close"
 c.input.insert_mode.auto_load = False
 
 # spoof chrome UA globally - qtwebengine is chromium anyway
-c.content.headers.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.164 Safari/537.36"
+c.content.headers.user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 
 # --- security/privacy hardening ---
 
@@ -30,8 +30,10 @@ c.content.blocking.method = "both"
 # disable canvas fingerprinting by default
 # toggle per-site with :set -u <pattern> content.canvas_reading true
 c.content.canvas_reading = False
+config.set('content.canvas_reading', True, 'https://challenges.cloudflare.com/*')
 config.bind("yoc", "config-cycle -p content.canvas_reading true false")
 config.bind("yot", "config-cycle -p tabs.position left top")
+config.bind("yob", "jseval -q (function(){var s=document.getElementById('qb-dark');if(s){s.remove();return}s=document.createElement('style');s.id='qb-dark';s.textContent='html,body,*:not(img):not(video):not(canvas):not(svg):not(picture):not(figure){background-color:#000!important;color:#aaa!important;border-color:#333!important;box-shadow:none!important}h1,h2,h3,h4,h5,h6{color:#ccc!important}a{color:#6a9fb5!important}a:visited{color:#8a7fb5!important}img,video,canvas,svg,picture{opacity:0.9}input,textarea,select,button{background-color:#111!important;color:#aaa!important;border-color:#333!important}code,pre{background-color:#111!important;color:#aaa!important}';document.head.appendChild(s)})()")
 
 c.window.hide_decoration = True # hide the macOS title bar
 
@@ -53,7 +55,7 @@ for i in range(1, 10):
     config.bind(f" {i}", f"tab-focus {i}")
     c.aliases[str(i)] = f"tab-focus {i}"
 
-config.bind(" rv", "quickmarks-reload ;; bookmarks-reload ;; config-source")
+config.bind(" rv", "quickmarks-reload ;; bookmarks-reload ;; greasemonkey-reload ;; config-source")
 config.bind(" tm", "cmd-set-text -s :tab-move")
 config.bind(" tO", "tab-only")
 config.bind(" wO", "window-only")
