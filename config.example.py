@@ -33,6 +33,8 @@ c.content.canvas_reading = False
 config.bind("yoc", "config-cycle -p content.canvas_reading true false")
 config.bind("yot", "config-cycle -p tabs.position left top")
 
+c.window.hide_decoration = True # hide the macOS title bar
+
 # <space>1-9 and :1-9 to jump to tab by number
 for i in range(1, 10):
     config.bind(f" {i}", f"tab-focus {i}")
