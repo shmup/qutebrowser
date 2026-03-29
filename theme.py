@@ -35,7 +35,7 @@
 # fg_match = "#d4f5e6"      # highlighted match text
 
 # --- win95 ---
-bg_deep = "#b5b5b5"       # deepest background (tab bar, empty space)
+bg_deep = "#868686"       # deepest background (tab bar, empty space)
 bg_dim = "#c0c0c0"        # dim row background
 bg_mid = "#c8c8c8"        # mid row background (alternating)
 bg_active = "#000080"     # active/selected background
