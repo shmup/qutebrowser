@@ -8,7 +8,7 @@ c.session.lazy_restore = True
 c.aliases["tc"] = "tab-close"
 
 # enter insert mode when a page loads with a focused input
-c.input.insert_mode.auto_load = True
+c.input.insert_mode.auto_load = False
 
 # spoof chrome UA globally - qtwebengine is chromium anyway
 c.content.headers.user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.7680.164 Safari/537.36"
