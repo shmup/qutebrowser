@@ -54,7 +54,7 @@ c.tabs.favicons.show = "always" # always | never | pinned
 config.source('theme.py')
 
 # <space>1-9 and :1-9 to jump to tab by number
-for i in range(1, 10):
+for i in range(1, 20):
     config.bind(f" {i}", f"tab-focus {i}")
     c.aliases[str(i)] = f"tab-focus {i}"
 
