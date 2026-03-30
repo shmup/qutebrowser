@@ -42,7 +42,7 @@ c.window.hide_decoration = True # hide the macOS title bar
 
 # --- tab layout ---
 c.tabs.show = "multiple" # hide tab bar when there's only one tab
-c.tabs.width = 250 # vertical tab width
+c.tabs.width = 200 # vertical tab width
 # tab title format
 c.tabs.title.format = "{audio}{index}: {current_title}"
 c.tabs.padding = {"top": 2, "bottom": 2, "left": 2, "right": 2}
