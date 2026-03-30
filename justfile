@@ -16,7 +16,8 @@ setup:
     just link-config
     echo ""
     echo "setup complete. run with: just run"
-    echo "requires system packages: python3-pyqt6 python3-pyqt6-webengine"
+    echo "requires system packages: python3-pyqt6 python3-pyqt6-webengine qt6-qtwebengine-devtools"
+
 
 [macos]
 setup:
@@ -51,8 +52,9 @@ setup:
     Write-Host "setup complete. run with: just run"
 
 # download pdf.js for in-browser pdf viewing
+# pinned: 5.6.x has broken initialization on chromium 134 (qtwebengine)
 setup-pdfjs:
-    .venv/bin/python scripts/dev/update_3rdparty.py
+    .venv/bin/python scripts/dev/update_3rdparty.py --pdfjs 5.4.624
 
 # symlink config and theme into XDG config dir
 [unix]
