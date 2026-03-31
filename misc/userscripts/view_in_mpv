@@ -50,6 +50,58 @@ msg() {
 MPV_COMMAND=${MPV_COMMAND:-mpv}
 # Warning: spaces in single flags are not supported
 MPV_FLAGS=${MPV_FLAGS:- --force-window --quiet --keep-open=yes --ytdl}
+
+# Parse --cookies flag from args, pass the rest through to mpv
+USE_COOKIES=0
+mpv_args=()
+for arg in "$@"; do
+    if [ "$arg" = "--cookies" ]; then
+        USE_COOKIES=1
+    else
+        mpv_args+=("$arg")
+    fi
+done
+
+if [ "$USE_COOKIES" -eq 1 ]; then
+    COOKIE_DB="${QUTE_DATA_DIR:-$HOME/.local/share/qutebrowser}/webengine/Cookies"
+    if [ ! -f "$COOKIE_DB" ]; then
+        msg warning "Cookie database not found at $COOKIE_DB"
+    else
+        # extract domain from the current URL
+        domain=$(python3 -c "from urllib.parse import urlparse; print(urlparse('$QUTE_URL').hostname)")
+        COOKIE_TMP=$(mktemp /tmp/qute_cookies_XXXXXX.txt)
+        # write Netscape cookie file header
+        echo "# Netscape HTTP Cookie File" > "$COOKIE_TMP"
+        # query cookies for this domain, converting chromium timestamps to unix epoch
+        # chromium uses microseconds since 1601-01-01, unix uses seconds since 1970-01-01
+        sqlite3 "$COOKIE_DB" <<SQL >> "$COOKIE_TMP"
+.mode tabs
+.headers off
+SELECT
+    host_key,
+    CASE WHEN host_key LIKE '.%' THEN 'TRUE' ELSE 'FALSE' END,
+    path,
+    CASE WHEN is_secure THEN 'TRUE' ELSE 'FALSE' END,
+    CASE WHEN expires_utc > 0 THEN (expires_utc / 1000000) - 11644473600 ELSE 0 END,
+    name,
+    value
+FROM cookies
+WHERE host_key = '${domain}'
+   OR host_key = '.${domain}'
+   OR '${domain}' LIKE '%' || host_key;
+SQL
+        cookie_count=$(wc -l < "$COOKIE_TMP")
+        cookie_count=$((cookie_count - 1))  # subtract header line
+        if [ "$cookie_count" -gt 0 ]; then
+            msg info "Loaded $cookie_count cookies for $domain"
+            MPV_FLAGS="$MPV_FLAGS --ytdl-raw-options=cookies=$COOKIE_TMP"
+        else
+            msg warning "No cookies found for $domain"
+            rm -f "$COOKIE_TMP"
+        fi
+    fi
+fi
+
 IFS=" " read -r -a video_command <<< "$MPV_COMMAND $MPV_FLAGS"
 
 js() {
@@ -139,4 +191,7 @@ printjs() {
 echo "jseval -q -w main $(printjs)" >> "$QUTE_FIFO"
 
 msg info "Opening $QUTE_URL with mpv"
-"${video_command[@]}" "$@" "$QUTE_URL"
+"${video_command[@]}" "${mpv_args[@]}" "$QUTE_URL"
+
+# clean up temp cookie file if we made one
+[ -n "${COOKIE_TMP:-}" ] && rm -f "$COOKIE_TMP"
